@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">샤이닝 키즈 스티커북</string>
+    <string name="title_activity_main">샤이닝 키즈 스티커북</string>
+    <string name="package_name">com.sharky.stickerbook</string>
+    <string name="custom_url_scheme">com.sharky.stickerbook</string>
+</resources>
