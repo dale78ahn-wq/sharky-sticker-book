@@ -1,17 +1,7 @@
 import { X } from 'lucide-react';
+import { STICKERS, getStickerStyle } from '../data/stickers';
 
 export default function StickerPopup({ onSelect, onClose }) {
-  const stickers = [
-    { emoji: '🌟', name: '별' },
-    { emoji: '❤️', name: '하트' },
-    { emoji: '🐶', name: '강아지' },
-    { emoji: '🏆', name: '트로피' },
-    { emoji: '⭐', name: '별표' },
-    { emoji: '💖', name: '반짝하트' },
-    { emoji: '🎉', name: '축하' },
-    { emoji: '🎈', name: '풍선' },
-  ];
-
   return (
     <div
       className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
@@ -31,14 +21,18 @@ export default function StickerPopup({ onSelect, onClose }) {
           </button>
         </div>
 
-        <div className="grid grid-cols-4 gap-4">
-          {stickers.map((sticker, index) => (
+        <div className="grid grid-cols-3 gap-4">
+          {STICKERS.map((sticker) => (
             <button
-              key={index}
-              onClick={() => onSelect(sticker.emoji)}
-              className="clay-btn bg-gradient-to-br from-pastel-yellow-btn to-pastel-pink-btn rounded-2xl p-4 text-4xl"
+              key={sticker.id}
+              type="button"
+              onClick={() => onSelect(sticker.id)}
+              className="clay-btn rounded-2xl overflow-hidden bg-pastel-yellow/20 flex items-center justify-center p-2 min-w-[100px] min-h-[100px]"
             >
-              {sticker.emoji}
+              <div
+                className="rounded-xl"
+                style={getStickerStyle(sticker.id, 96)}
+              />
             </button>
           ))}
         </div>

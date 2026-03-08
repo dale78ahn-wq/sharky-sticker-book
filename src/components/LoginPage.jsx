@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, User, Lock } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { Sparkles, User, Lock, KeyRound } from 'lucide-react';
+import { useAuth, resetAdminPassword } from '../context/AuthContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -9,6 +9,9 @@ export default function LoginPage() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -18,6 +21,21 @@ export default function LoginPage() {
       navigate('/', { replace: true });
     } else {
       setError(result.message || '로그인에 실패했어요.');
+    }
+  };
+
+  const handleRecovery = (e) => {
+    e.preventDefault();
+    setError('');
+    const result = resetAdminPassword(recoveryCode.trim(), newPassword);
+    if (result.ok) {
+      setShowRecovery(false);
+      setRecoveryCode('');
+      setNewPassword('');
+      setError('');
+      alert('비밀번호가 변경되었어요. 새 비밀번호로 로그인해주세요.');
+    } else {
+      setError(result.message || '복구에 실패했어요.');
     }
   };
 
@@ -78,6 +96,64 @@ export default function LoginPage() {
         <p className="text-center text-sm text-slate-600 mt-4">
           첫 로그인 시 입력한 비밀번호가 설정돼요. 다음부터는 같은 비밀번호로 로그인해주세요.
         </p>
+
+        <button
+          type="button"
+          onClick={() => setShowRecovery(true)}
+          className="mt-3 w-full flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-amber-700"
+        >
+          <KeyRound className="w-4 h-4" />
+          관리자 비밀번호 복구
+        </button>
+
+        {showRecovery && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white rounded-3xl p-6 clay-card max-w-sm w-full">
+              <h3 className="font-title font-bold text-amber-800 mb-3">관리자 비밀번호 복구</h3>
+              <p className="text-sm text-slate-600 mb-4">
+                미리 설정한 복구 코드를 입력하고 새 비밀번호를 설정해주세요.
+              </p>
+              <form onSubmit={handleRecovery} className="space-y-3">
+                <input
+                  type="text"
+                  value={recoveryCode}
+                  onChange={(e) => setRecoveryCode(e.target.value)}
+                  placeholder="복구 코드"
+                  className="clay-input w-full px-3 py-2 rounded-2xl text-slate-800"
+                />
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="새 비밀번호 (4자 이상)"
+                  className="clay-input w-full px-3 py-2 rounded-2xl text-slate-800"
+                />
+                {error && <p className="text-amber-700 text-sm">{error}</p>}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRecovery(false);
+                      setRecoveryCode('');
+                      setNewPassword('');
+                      setError('');
+                    }}
+                    className="clay-btn flex-1 py-2 rounded-2xl bg-slate-200 text-slate-700 font-semibold"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!recoveryCode.trim() || !newPassword}
+                    className="clay-btn flex-1 py-2 rounded-2xl bg-gradient-to-r from-pastel-yellow-btn to-pastel-pink-btn font-title font-bold text-amber-900 disabled:opacity-50"
+                  >
+                    비밀번호 변경
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         <footer className="mt-10 pt-6 text-center">
           <img

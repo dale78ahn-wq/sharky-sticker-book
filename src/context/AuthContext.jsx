@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const AUTH_KEY = 'shining_kids_auth';
 const STUDENTS_KEY = 'shining_kids_students';
 const PASSWORDS_KEY = 'shining_kids_user_passwords';
+const ADMIN_RECOVERY_KEY = 'sharky_admin_recovery';
 const ADMIN_NAMES = ['admin', '관리자'];
 
 export function isAdmin(user) {
@@ -41,6 +42,39 @@ function setStoredPassword(name, password) {
 
 function getStoredPassword(name) {
   return getPasswords()[name] ?? null;
+}
+
+export function getAdminRecoveryCode() {
+  try {
+    return localStorage.getItem(ADMIN_RECOVERY_KEY) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+export function setAdminRecoveryCode(code) {
+  try {
+    if (code && code.trim()) {
+      localStorage.setItem(ADMIN_RECOVERY_KEY, code.trim());
+      return true;
+    }
+  } catch (e) {
+    console.warn('Recovery code save failed', e);
+  }
+  return false;
+}
+
+export function resetAdminPassword(recoveryCode, newPassword) {
+  const stored = getAdminRecoveryCode();
+  if (!stored) return { ok: false, message: '복구 코드가 설정되어 있지 않아요.' };
+  if (recoveryCode.trim() !== stored) return { ok: false, message: '복구 코드가 맞지 않아요.' };
+  if (!newPassword || newPassword.length < 4)
+    return { ok: false, message: '새 비밀번호는 4자 이상 입력해주세요.' };
+
+  for (const adminName of ADMIN_NAMES) {
+    setStoredPassword(adminName, newPassword);
+  }
+  return { ok: true };
 }
 
 function registerStudent(name) {

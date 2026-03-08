@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Users, ChevronDown, ChevronUp, BookOpen, Save } from 'lucide-react';
+import { Users, ChevronDown, ChevronUp, BookOpen, Save, Download, KeyRound, FileSpreadsheet } from 'lucide-react';
 import Layout from './Layout';
-import { getStudentsList } from '../context/AuthContext';
+import { getStudentsList, getAdminRecoveryCode, setAdminRecoveryCode } from '../context/AuthContext';
 import { loadStudentData } from '../context/ProgramContext';
 import { useTerm } from '../context/TermContext';
 import { loadVerses, saveVerses } from '../data/versesStorage';
 import { weekTitles } from '../data/weeksInfo';
+
+function downloadFile(dataUrl, fileName) {
+  if (!dataUrl) return;
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = fileName || 'download';
+  a.click();
+}
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
@@ -72,18 +80,157 @@ function StudentRow({ name, year, semester }) {
             </div>
           </div>
           <div>
-            <p className="text-sm font-bold text-amber-800 mb-2">파일 제출 현황</p>
-            <ul className="text-sm space-y-1">
-              <li>오디오 암송: {audioWeeks.length ? `${audioWeeks.join(', ')}주차` : '없음'}</li>
-              <li>암송 일기/필사: {diaryWeeks.length ? `${diaryWeeks.join(', ')}주차` : '없음'}</li>
-              <li>5주차 독후감: {bookReport ? `제출 (${bookReport.name})` : '미제출'}</li>
-              <li>6주차 간증문: {testimony ? `제출 (${testimony.name})` : '미제출'}</li>
+            <p className="text-sm font-bold text-amber-800 mb-2">파일 제출 현황 및 다운로드</p>
+            <ul className="text-sm space-y-2">
+              <li className="flex items-center justify-between gap-2">
+                <span>오디오 암송: {audioWeeks.length ? `${audioWeeks.join(', ')}주차` : '없음'}</span>
+                {audioWeeks.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {audioWeeks.map((w) => (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => downloadFile(data.weeklyAudio[w]?.dataUrl, `${name}_오디오_${w}주차_${data.weeklyAudio[w]?.name || ''}`)}
+                        className="clay-btn px-2 py-1 rounded-xl text-xs bg-pastel-yellow/50 font-semibold text-amber-800 flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        {w}주
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </li>
+              <li className="flex items-center justify-between gap-2">
+                <span>암송 일기/필사: {diaryWeeks.length ? `${diaryWeeks.join(', ')}주차` : '없음'}</span>
+                {diaryWeeks.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {diaryWeeks.map((w) => (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => downloadFile(data.weeklyDiary[w]?.dataUrl, `${name}_일기_${w}주차_${data.weeklyDiary[w]?.name || ''}`)}
+                        className="clay-btn px-2 py-1 rounded-xl text-xs bg-pastel-yellow/50 font-semibold text-amber-800 flex items-center gap-1"
+                      >
+                        <Download className="w-3 h-3" />
+                        {w}주
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </li>
+              <li className="flex items-center justify-between gap-2">
+                <span>5주차 독후감: {bookReport ? bookReport.name : '미제출'}</span>
+                {bookReport && (
+                  <button
+                    type="button"
+                    onClick={() => downloadFile(bookReport.dataUrl, `${name}_독후감_${bookReport.name}`)}
+                    className="clay-btn px-2 py-1 rounded-xl text-xs bg-pastel-yellow/50 font-semibold text-amber-800 flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" />
+                    다운로드
+                  </button>
+                )}
+              </li>
+              <li className="flex items-center justify-between gap-2">
+                <span>6주차 간증문: {testimony ? testimony.name : '미제출'}</span>
+                {testimony && (
+                  <button
+                    type="button"
+                    onClick={() => downloadFile(testimony.dataUrl, `${name}_간증문_${testimony.name}`)}
+                    className="clay-btn px-2 py-1 rounded-xl text-xs bg-pastel-yellow/50 font-semibold text-amber-800 flex items-center gap-1"
+                  >
+                    <Download className="w-3 h-3" />
+                    다운로드
+                  </button>
+                )}
+              </li>
             </ul>
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function AdminRecoverySection() {
+  const [code, setCode] = useState(() => getAdminRecoveryCode());
+  const [input, setInput] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = () => {
+    if (input.trim().length < 4) {
+      alert('복구 코드는 4자 이상 입력해주세요.');
+      return;
+    }
+    setAdminRecoveryCode(input);
+    setCode(input);
+    setInput('');
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <div className="bg-white rounded-3xl p-5 clay-card">
+      <div className="flex items-center gap-2 mb-2">
+        <KeyRound className="w-5 h-5 text-amber-600" />
+        <span className="font-bold text-amber-800">관리자 비밀번호 복구 코드</span>
+      </div>
+      <p className="text-sm text-slate-600 mb-3">
+        비밀번호를 잊어버렸을 때 로그인 화면의 &quot;관리자 비밀번호 복구&quot;에서 이 코드로 새 비밀번호를 설정할 수 있어요.
+      </p>
+      {code ? (
+        <p className="text-sm text-amber-700 font-medium mb-2">설정됨: {code.replace(/./g, '•')}</p>
+      ) : (
+        <p className="text-sm text-slate-500 mb-2">아직 설정되지 않았어요.</p>
+      )}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="복구 코드 (4자 이상)"
+          className="clay-input flex-1 rounded-2xl px-3 py-2 text-slate-800"
+        />
+        <button
+          type="button"
+          onClick={handleSave}
+          className="clay-btn px-4 py-2 rounded-2xl bg-gradient-to-br from-pastel-yellow-btn to-pastel-pink-btn font-title font-semibold text-amber-800"
+        >
+          {saved ? '저장됨 ✓' : '설정/변경'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function downloadStickerExcel(students, year, semester) {
+  const rows = [['학생명', '1주차', '2주차', '3주차', '4주차', '5주차', '6주차', '7주차', '합계']];
+  for (const name of students) {
+    const data = loadStudentData(name, year, semester);
+    const weekCounts = [1, 2, 3, 4, 5, 6, 7].map((w) => {
+      let c = 0;
+      for (let day = 1; day <= 7; day++) {
+        const key = `${w}-${day}`;
+        const row = data.daily?.[key] || {};
+        if (row.말씀암송) c++;
+        if (row.감사한것) c++;
+        if (row.순종) c++;
+        if (row.존댓말) c++;
+      }
+      return c;
+    });
+    const total = weekCounts.reduce((a, b) => a + b, 0);
+    rows.push([name, ...weekCounts, total]);
+  }
+  const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `스티커현황_${year}년_${semester}학기.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function VersesEditor({ year, semester }) {
@@ -204,6 +351,9 @@ export default function AdminScreen() {
   return (
     <Layout title="관리자 - 학생 현황">
       <div className="space-y-6">
+        {/* 관리자 비밀번호 복구 코드 */}
+        <AdminRecoverySection />
+
         {/* 연도/학기 선택 */}
         <div className="bg-white rounded-3xl p-4 clay-card">
           <p className="text-sm font-bold text-amber-800 mb-2">현재 학기 (데이터 조회 기준)</p>
@@ -243,9 +393,21 @@ export default function AdminScreen() {
 
         {/* 학생 목록 */}
         <div>
-          <p className="text-gray-600 text-sm mb-2">
-            {term.year}년 {term.semester}학기 학생별 스티커 및 제출 현황입니다.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <p className="text-gray-600 text-sm">
+              {term.year}년 {term.semester}학기 학생별 스티커 및 제출 현황입니다.
+            </p>
+            {students.length > 0 && (
+              <button
+                type="button"
+                onClick={() => downloadStickerExcel(students, term.year, term.semester)}
+                className="clay-btn flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-br from-pastel-yellow-btn to-pastel-pink-btn font-title font-semibold text-amber-800"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                스티커 현황 Excel 다운로드
+              </button>
+            )}
+          </div>
           {students.length === 0 ? (
             <div className="rounded-3xl bg-white p-6 text-center text-slate-600 clay-card">
               아직 등록된 학생이 없어요. 학생이 로그인하면 목록에 나타납니다.

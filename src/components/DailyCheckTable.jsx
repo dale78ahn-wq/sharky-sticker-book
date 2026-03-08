@@ -1,5 +1,6 @@
 import { useProgram } from '../context/ProgramContext';
 import { CHECK_COLUMNS } from '../data/weeksInfo';
+import { getStickerStyle, isValidStickerId } from '../data/stickers';
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -17,7 +18,7 @@ export default function DailyCheckTable({ week, onCellClick }) {
             {CHECK_COLUMNS.map((col) => (
               <th
                 key={col.id}
-                className="py-3 px-2 text-amber-800 font-title font-bold border-b-2 border-r border-pastel-pink/30 last:border-r-0 min-w-[4rem]"
+                className="py-3 px-2 text-amber-800 font-title font-bold border-b-2 border-r border-pastel-pink/30 last:border-r-0 min-w-[4.5rem]"
               >
                 {col.label}
               </th>
@@ -40,13 +41,22 @@ export default function DailyCheckTable({ week, onCellClick }) {
                     <button
                       type="button"
                       onClick={() => onCellClick(week, day, col.id)}
-                      className={`w-12 h-12 mx-auto rounded-2xl flex items-center justify-center text-2xl clay-btn transition-all duration-200 ${
+                      className={`w-16 h-16 min-w-[4rem] min-h-[4rem] mx-auto rounded-2xl flex items-center justify-center clay-btn transition-all duration-200 overflow-hidden ${
                         row[col.id]
-                          ? 'bg-gradient-to-br from-pastel-yellow/80 to-pastel-yellow/60 text-amber-800'
+                          ? 'bg-gradient-to-br from-pastel-yellow/80 to-pastel-yellow/60'
                           : 'bg-white text-gray-300'
                       }`}
                     >
-                      {row[col.id] || '○'}
+                      {row[col.id] && isValidStickerId(row[col.id]) ? (
+                        <div
+                          className="rounded-lg flex-shrink-0"
+                          style={getStickerStyle(row[col.id], 48)}
+                        />
+                      ) : row[col.id] ? (
+                        <span className="text-2xl">{row[col.id]}</span>
+                      ) : (
+                        <span className="text-slate-300 text-xl">○</span>
+                      )}
                     </button>
                   </td>
                 ))}
