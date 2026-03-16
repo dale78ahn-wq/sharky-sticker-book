@@ -55,7 +55,7 @@ export function ProgramProvider({ children }) {
       .catch((e) => {
         console.warn('Program load failed', e);
         if (!cancelled) {
-          setData(defaultData());
+          setData((prev) => ({ ...defaultData(), ...prev }));
           hasLoadedRef.current = true;
         }
       })
@@ -90,7 +90,7 @@ export function ProgramProvider({ children }) {
           },
         },
       };
-      if (userName && hasLoadedRef.current) {
+      if (userName) {
         apiSetProgram(year, semester, userName, next).catch((e) =>
           console.warn('Program save failed', e)
         );
@@ -103,7 +103,7 @@ export function ProgramProvider({ children }) {
   const setWeeklyAudio = useCallback((week, fileInfo) => {
     setData((prev) => {
       const next = { ...prev, weeklyAudio: { ...prev.weeklyAudio, [week]: fileInfo } };
-      if (userName && hasLoadedRef.current) {
+      if (userName) {
         apiSetProgram(year, semester, userName, next).catch((e) =>
           console.warn('Program save failed', e)
         );
@@ -116,7 +116,7 @@ export function ProgramProvider({ children }) {
   const setWeeklyDiary = useCallback((week, fileInfo) => {
     setData((prev) => {
       const next = { ...prev, weeklyDiary: { ...prev.weeklyDiary, [week]: fileInfo } };
-      if (userName && hasLoadedRef.current) {
+      if (userName) {
         apiSetProgram(year, semester, userName, next).catch((e) =>
           console.warn('Program save failed', e)
         );
@@ -129,7 +129,7 @@ export function ProgramProvider({ children }) {
   const setWeeklyBookReport = useCallback((week, fileInfo) => {
     setData((prev) => {
       const next = { ...prev, weeklyBookReport: { ...prev.weeklyBookReport, [week]: fileInfo } };
-      if (userName && hasLoadedRef.current) {
+      if (userName) {
         apiSetProgram(year, semester, userName, next).catch((e) =>
           console.warn('Program save failed', e)
         );
@@ -142,7 +142,7 @@ export function ProgramProvider({ children }) {
   const setWeeklyTestimony = useCallback((week, fileInfo) => {
     setData((prev) => {
       const next = { ...prev, weeklyTestimony: { ...prev.weeklyTestimony, [week]: fileInfo } };
-      if (userName && hasLoadedRef.current) {
+      if (userName) {
         apiSetProgram(year, semester, userName, next).catch((e) =>
           console.warn('Program save failed', e)
         );
