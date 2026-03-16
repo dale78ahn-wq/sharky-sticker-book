@@ -54,7 +54,15 @@ export default async function handler(req, res) {
     }
 
     if (method === 'POST') {
-      const { year, semester, userName, data } = req.body || {};
+      let body = req.body;
+      if (typeof body === 'string') {
+        try {
+          body = JSON.parse(body);
+        } catch (e) {
+          body = {};
+        }
+      }
+      const { year, semester, userName, data } = body || {};
       const y = String(year || '').trim();
       const s = String(semester || '').trim();
       const u = String(userName || '').trim();

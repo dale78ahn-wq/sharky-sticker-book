@@ -40,13 +40,24 @@ export function ProgramProvider({ children }) {
     apiGetProgram(year, semester, userName)
       .then((loaded) => {
         if (!cancelled) {
-          setData({ ...defaultData(), ...loaded });
+          setData((prev) => {
+            const merged = { ...defaultData(), ...loaded };
+            merged.daily = { ...(loaded?.daily || {}), ...(prev?.daily || {}) };
+            merged.weeklyAudio = { ...(loaded?.weeklyAudio || {}), ...(prev?.weeklyAudio || {}) };
+            merged.weeklyDiary = { ...(loaded?.weeklyDiary || {}), ...(prev?.weeklyDiary || {}) };
+            merged.weeklyBookReport = { ...(loaded?.weeklyBookReport || {}), ...(prev?.weeklyBookReport || {}) };
+            merged.weeklyTestimony = { ...(loaded?.weeklyTestimony || {}), ...(prev?.weeklyTestimony || {}) };
+            return merged;
+          });
           hasLoadedRef.current = true;
         }
       })
       .catch((e) => {
         console.warn('Program load failed', e);
-        if (!cancelled) setData(defaultData());
+        if (!cancelled) {
+          setData(defaultData());
+          hasLoadedRef.current = true;
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -68,49 +79,77 @@ export function ProgramProvider({ children }) {
 
   const setSticker = useCallback((week, day, column, sticker) => {
     const key = `${week}-${day}`;
-    setData((prev) => ({
-      ...prev,
-      daily: {
-        ...prev.daily,
-        [key]: {
-          ...(prev.daily[key] || defaultDay()),
-          [column]: sticker,
+    setData((prev) => {
+      const next = {
+        ...prev,
+        daily: {
+          ...prev.daily,
+          [key]: {
+            ...(prev.daily[key] || defaultDay()),
+            [column]: sticker,
+          },
         },
-      },
-    }));
-  }, []);
+      };
+      if (userName && hasLoadedRef.current) {
+        apiSetProgram(year, semester, userName, next).catch((e) =>
+          console.warn('Program save failed', e)
+        );
+      }
+      return next;
+    });
+  }, [year, semester, userName]);
 
   const getWeeklyAudio = useCallback((week) => data.weeklyAudio[week] ?? null, [data.weeklyAudio]);
   const setWeeklyAudio = useCallback((week, fileInfo) => {
-    setData((prev) => ({
-      ...prev,
-      weeklyAudio: { ...prev.weeklyAudio, [week]: fileInfo },
-    }));
-  }, []);
+    setData((prev) => {
+      const next = { ...prev, weeklyAudio: { ...prev.weeklyAudio, [week]: fileInfo } };
+      if (userName && hasLoadedRef.current) {
+        apiSetProgram(year, semester, userName, next).catch((e) =>
+          console.warn('Program save failed', e)
+        );
+      }
+      return next;
+    });
+  }, [year, semester, userName]);
 
   const getWeeklyDiary = useCallback((week) => data.weeklyDiary[week] ?? null, [data.weeklyDiary]);
   const setWeeklyDiary = useCallback((week, fileInfo) => {
-    setData((prev) => ({
-      ...prev,
-      weeklyDiary: { ...prev.weeklyDiary, [week]: fileInfo },
-    }));
-  }, []);
+    setData((prev) => {
+      const next = { ...prev, weeklyDiary: { ...prev.weeklyDiary, [week]: fileInfo } };
+      if (userName && hasLoadedRef.current) {
+        apiSetProgram(year, semester, userName, next).catch((e) =>
+          console.warn('Program save failed', e)
+        );
+      }
+      return next;
+    });
+  }, [year, semester, userName]);
 
   const getWeeklyBookReport = useCallback((week) => data.weeklyBookReport[week] ?? null, [data.weeklyBookReport]);
   const setWeeklyBookReport = useCallback((week, fileInfo) => {
-    setData((prev) => ({
-      ...prev,
-      weeklyBookReport: { ...prev.weeklyBookReport, [week]: fileInfo },
-    }));
-  }, []);
+    setData((prev) => {
+      const next = { ...prev, weeklyBookReport: { ...prev.weeklyBookReport, [week]: fileInfo } };
+      if (userName && hasLoadedRef.current) {
+        apiSetProgram(year, semester, userName, next).catch((e) =>
+          console.warn('Program save failed', e)
+        );
+      }
+      return next;
+    });
+  }, [year, semester, userName]);
 
   const getWeeklyTestimony = useCallback((week) => data.weeklyTestimony[week] ?? null, [data.weeklyTestimony]);
   const setWeeklyTestimony = useCallback((week, fileInfo) => {
-    setData((prev) => ({
-      ...prev,
-      weeklyTestimony: { ...prev.weeklyTestimony, [week]: fileInfo },
-    }));
-  }, []);
+    setData((prev) => {
+      const next = { ...prev, weeklyTestimony: { ...prev.weeklyTestimony, [week]: fileInfo } };
+      if (userName && hasLoadedRef.current) {
+        apiSetProgram(year, semester, userName, next).catch((e) =>
+          console.warn('Program save failed', e)
+        );
+      }
+      return next;
+    });
+  }, [year, semester, userName]);
 
   const countWeekStickers = useCallback((week) => {
     let count = 0;
