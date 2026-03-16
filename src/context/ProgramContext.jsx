@@ -56,7 +56,7 @@ export function ProgramProvider({ children }) {
         console.warn('Program load failed', e);
         if (!cancelled) {
           setData((prev) => ({ ...defaultData(), ...prev }));
-          hasLoadedRef.current = true;
+          // load 실패 시 hasLoadedRef를 true로 두지 않음 → 저장 effect가 빈 데이터로 Redis 덮어쓰는 것 방지
         }
       })
       .finally(() => {
