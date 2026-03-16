@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, BookOpen } from 'lucide-react';
 import Layout from './Layout';
 import DailyCheckTable from './DailyCheckTable';
@@ -8,10 +8,12 @@ import RewardsSection from './RewardsSection';
 import { useAuth } from '../context/AuthContext';
 import { useProgram } from '../context/ProgramContext';
 import { useTerm } from '../context/TermContext';
-import { loadVerses, getWeekVerses } from '../data/versesStorage';
+import { getWeekVerses } from '../data/versesStorage';
+import { apiGetVerses } from '../api/client';
 import { weekTitles } from '../data/weeksInfo';
 
 const WEEKS = [1, 2, 3, 4, 5, 6, 7];
+const defaultVerses = () => ({ '1': [], '2': [], '3': [], '4': [], '5': [], '6': [], '7': [] });
 
 export default function MainScreen() {
   const { user } = useAuth();
@@ -20,7 +22,14 @@ export default function MainScreen() {
   const [currentWeek, setCurrentWeek] = useState(1);
   const [popup, setPopup] = useState(null); // { week, day, column }
   const [showStickerPopup, setShowStickerPopup] = useState(false);
-  const versesData = loadVerses(term.year, term.semester);
+  const [versesData, setVersesData] = useState(defaultVerses);
+
+  useEffect(() => {
+    apiGetVerses(term.year, term.semester)
+      .then((data) => setVersesData({ ...defaultVerses(), ...data }))
+      .catch(() => setVersesData(defaultVerses()));
+  }, [term.year, term.semester]);
+
   const weekVerses = getWeekVerses(versesData, currentWeek);
 
   const handleCellClick = (week, day, column) => {

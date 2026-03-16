@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Sparkles, User, Lock, KeyRound } from 'lucide-react';
 import { useAuth, resetAdminPassword } from '../context/AuthContext';
+import { apiInitRecovery } from '../api/client';
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useAuth();
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -13,10 +15,21 @@ export default function LoginPage() {
   const [recoveryCode, setRecoveryCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    if (searchParams.get('init') === '1') {
+      apiInitRecovery()
+        .then((r) => {
+          alert(r?.message || (r?.ok ? '복구 코드가 damie로 설정되었어요.' : '설정 실패'));
+          window.history.replaceState({}, '', '/login');
+        })
+        .catch((e) => alert('초기화 실패: ' + (e.message || '') + '\n\nAPI가 404라면 Vercel 대시보드에서 Root Directory가 비어있는지 확인해주세요.'));
+    }
+  }, [searchParams]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const result = login(name.trim(), password);
+    const result = await login(name.trim(), password);
     if (result.ok) {
       navigate('/', { replace: true });
     } else {
@@ -24,10 +37,10 @@ export default function LoginPage() {
     }
   };
 
-  const handleRecovery = (e) => {
+  const handleRecovery = async (e) => {
     e.preventDefault();
     setError('');
-    const result = resetAdminPassword(recoveryCode.trim(), newPassword);
+    const result = await resetAdminPassword(recoveryCode.trim(), newPassword);
     if (result.ok) {
       setShowRecovery(false);
       setRecoveryCode('');

@@ -1,8 +1,7 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useTerm } from './TermContext';
-
-const STORAGE_PREFIX = 'shining_kids_program_';
+import { apiGetProgram, apiSetProgram } from '../api/client';
 
 const defaultDay = () => ({
   말씀암송: null,
@@ -19,34 +18,6 @@ const defaultData = () => ({
   weeklyTestimony: {},
 });
 
-function getStorageKey(year, semester, userName) {
-  return `${STORAGE_PREFIX}${year}_${semester}_${userName || 'guest'}`;
-}
-
-function loadSaved(year, semester, userName) {
-  if (!userName) return defaultData();
-  try {
-    const raw = localStorage.getItem(getStorageKey(year, semester, userName));
-    if (raw) return { ...defaultData(), ...JSON.parse(raw) };
-  } catch (e) {
-    console.warn('Program load failed', e);
-  }
-  return defaultData();
-}
-
-function save(year, semester, userName, data) {
-  if (!userName) return;
-  try {
-    localStorage.setItem(getStorageKey(year, semester, userName), JSON.stringify(data));
-  } catch (e) {
-    console.warn('Program save failed', e);
-  }
-}
-
-export function loadStudentData(studentName, year, semester) {
-  return loadSaved(year, semester, studentName);
-}
-
 const ProgramContext = createContext(null);
 
 export function ProgramProvider({ children }) {
@@ -54,13 +25,40 @@ export function ProgramProvider({ children }) {
   const { year, semester } = useTerm();
   const userName = user?.name || null;
   const [data, setData] = useState(() => defaultData());
+  const [loading, setLoading] = useState(true);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
-    setData(loadSaved(year, semester, userName));
+    if (!userName) {
+      setData(defaultData());
+      setLoading(false);
+      hasLoadedRef.current = false;
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    apiGetProgram(year, semester, userName)
+      .then((loaded) => {
+        if (!cancelled) {
+          setData({ ...defaultData(), ...loaded });
+          hasLoadedRef.current = true;
+        }
+      })
+      .catch((e) => {
+        console.warn('Program load failed', e);
+        if (!cancelled) setData(defaultData());
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
   }, [year, semester, userName]);
 
   useEffect(() => {
-    save(year, semester, userName, data);
+    if (!userName || !hasLoadedRef.current) return;
+    apiSetProgram(year, semester, userName, data).catch((e) =>
+      console.warn('Program save failed', e)
+    );
   }, [year, semester, userName, data]);
 
   const getDay = useCallback((week, day) => {
@@ -135,6 +133,8 @@ export function ProgramProvider({ children }) {
   return (
     <ProgramContext.Provider
       value={{
+        data,
+        loading,
         getDay,
         setSticker,
         getWeeklyAudio,

@@ -1,11 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Users, ChevronDown, ChevronUp, BookOpen, Save, Download, KeyRound, FileSpreadsheet } from 'lucide-react';
+import { Users, ChevronDown, ChevronUp, BookOpen, Save, Download, KeyRound, FileSpreadsheet, RefreshCw } from 'lucide-react';
 import Layout from './Layout';
-import { getStudentsList, getAdminRecoveryCode, setAdminRecoveryCode } from '../context/AuthContext';
-import { loadStudentData } from '../context/ProgramContext';
+import { useAuth, getAdminRecoveryCode, setAdminRecoveryCode } from '../context/AuthContext';
 import { useTerm } from '../context/TermContext';
-import { loadVerses, saveVerses } from '../data/versesStorage';
+import { apiGetProgramAll, apiGetVerses, apiSetVerses } from '../api/client';
 import { weekTitles } from '../data/weeksInfo';
+
+const defaultProgramData = () => ({
+  daily: {},
+  weeklyAudio: {},
+  weeklyDiary: {},
+  weeklyBookReport: {},
+  weeklyTestimony: {},
+});
 
 function downloadFile(dataUrl, fileName) {
   if (!dataUrl) return;
@@ -18,9 +25,9 @@ function downloadFile(dataUrl, fileName) {
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = [CURRENT_YEAR + 1, CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 
-function StudentRow({ name, year, semester }) {
+function StudentRow({ name, year, semester, data: rawData }) {
   const [open, setOpen] = useState(false);
-  const data = loadStudentData(name, year, semester);
+  const data = rawData || defaultProgramData();
   let totalStickers = 0;
   for (let w = 1; w <= 7; w++) {
     for (let day = 1; day <= 7; day++) {
@@ -153,20 +160,30 @@ function StudentRow({ name, year, semester }) {
 }
 
 function AdminRecoverySection() {
-  const [code, setCode] = useState(() => getAdminRecoveryCode());
+  const [code, setCode] = useState('');
   const [input, setInput] = useState('');
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = () => {
+  useEffect(() => {
+    getAdminRecoveryCode().then((masked) => {
+      setCode(masked || '');
+      setLoading(false);
+    });
+  }, []);
+
+  const handleSave = async () => {
     if (input.trim().length < 4) {
       alert('복구 코드는 4자 이상 입력해주세요.');
       return;
     }
-    setAdminRecoveryCode(input);
-    setCode(input);
-    setInput('');
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    const ok = await setAdminRecoveryCode(input);
+    if (ok) {
+      setCode(input.replace(/./g, '•'));
+      setInput('');
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
   };
 
   return (
@@ -178,8 +195,10 @@ function AdminRecoverySection() {
       <p className="text-sm text-slate-600 mb-3">
         비밀번호를 잊어버렸을 때 로그인 화면의 &quot;관리자 비밀번호 복구&quot;에서 이 코드로 새 비밀번호를 설정할 수 있어요.
       </p>
-      {code ? (
-        <p className="text-sm text-amber-700 font-medium mb-2">설정됨: {code.replace(/./g, '•')}</p>
+      {loading ? (
+        <p className="text-sm text-slate-500 mb-2">불러오는 중...</p>
+      ) : code ? (
+        <p className="text-sm text-amber-700 font-medium mb-2">설정됨: {code}</p>
       ) : (
         <p className="text-sm text-slate-500 mb-2">아직 설정되지 않았어요.</p>
       )}
@@ -203,10 +222,10 @@ function AdminRecoverySection() {
   );
 }
 
-function downloadStickerExcel(students, year, semester) {
+function downloadStickerExcel(students, year, semester, allProgramData) {
   const rows = [['학생명', '1주차', '2주차', '3주차', '4주차', '5주차', '6주차', '7주차', '합계']];
   for (const name of students) {
-    const data = loadStudentData(name, year, semester);
+    const data = allProgramData[name] || defaultProgramData();
     const weekCounts = [1, 2, 3, 4, 5, 6, 7].map((w) => {
       let c = 0;
       for (let day = 1; day <= 7; day++) {
@@ -233,18 +252,27 @@ function downloadStickerExcel(students, year, semester) {
   URL.revokeObjectURL(url);
 }
 
+const defaultVerses = () => ({ '1': [], '2': [], '3': [], '4': [], '5': [], '6': [], '7': [] });
+
 function VersesEditor({ year, semester }) {
-  const [verses, setVerses] = useState(() => loadVerses(year, semester));
+  const [verses, setVerses] = useState(defaultVerses);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setVerses(loadVerses(year, semester));
+    setLoading(true);
+    apiGetVerses(year, semester)
+      .then((data) => setVerses({ ...defaultVerses(), ...data }))
+      .catch(() => setVerses(defaultVerses()))
+      .finally(() => setLoading(false));
   }, [year, semester]);
 
-  const handleSave = () => {
-    saveVerses(year, semester, verses);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSave = async () => {
+    const result = await apiSetVerses(year, semester, verses);
+    if (result?.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
   };
 
   const setWeekVerse = (week, index, field, value) => {
@@ -277,13 +305,15 @@ function VersesEditor({ year, semester }) {
         <button
           type="button"
           onClick={handleSave}
-          className="clay-btn flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-br from-pastel-yellow-btn to-pastel-pink-btn font-title font-semibold text-amber-800"
+          disabled={loading}
+          className="clay-btn flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-gradient-to-br from-pastel-yellow-btn to-pastel-pink-btn font-title font-semibold text-amber-800 disabled:opacity-50"
         >
           <Save className="w-4 h-4" />
-          저장
+          {loading ? '불러오는 중...' : '저장'}
           {saved && <span className="text-xs">✓</span>}
         </button>
       </div>
+      {loading && <p className="text-sm text-slate-500">성경 구절을 불러오는 중...</p>}
       {[1, 2, 3, 4, 5, 6, 7].map((week) => (
         <div key={week} className="clay-card-subtle rounded-2xl p-3 bg-pastel-purple/10">
           <p className="font-semibold text-amber-800 mb-2">{weekTitles[week]}</p>
@@ -333,20 +363,35 @@ function VersesEditor({ year, semester }) {
 }
 
 export default function AdminScreen() {
+  const { getStudentsList, loadStudents } = useAuth();
   const { term, setCurrentTerm } = useTerm();
   const [yearSelect, setYearSelect] = useState(term.year);
   const [semesterSelect, setSemesterSelect] = useState(term.semester);
+  const [allProgramData, setAllProgramData] = useState({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setYearSelect(term.year);
     setSemesterSelect(term.semester);
   }, [term]);
 
+  useEffect(() => {
+    loadStudents?.();
+  }, [loadStudents]);
+
+  useEffect(() => {
+    setLoading(true);
+    apiGetProgramAll(term.year, term.semester)
+      .then((data) => setAllProgramData(data || {}))
+      .catch(() => setAllProgramData({}))
+      .finally(() => setLoading(false));
+  }, [term.year, term.semester]);
+
   const applyTerm = () => {
     setCurrentTerm(Number(yearSelect), Number(semesterSelect));
   };
 
-  const students = getStudentsList().filter((n) => n && !['admin', '관리자'].includes(String(n).trim().toLowerCase()));
+  const students = (getStudentsList() || []).filter((n) => n && !['admin', '관리자'].includes(String(n).trim().toLowerCase()));
 
   return (
     <Layout title="관리자 - 학생 현황">
@@ -397,24 +442,48 @@ export default function AdminScreen() {
             <p className="text-gray-600 text-sm">
               {term.year}년 {term.semester}학기 학생별 스티커 및 제출 현황입니다.
             </p>
-            {students.length > 0 && (
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => downloadStickerExcel(students, term.year, term.semester)}
+                onClick={() => {
+                  loadStudents?.();
+                  setLoading(true);
+                  apiGetProgramAll(term.year, term.semester)
+                    .then((data) => setAllProgramData(data || {}))
+                    .catch(() => setAllProgramData({}))
+                    .finally(() => setLoading(false));
+                }}
+                className="clay-btn flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white border border-amber-200 font-semibold text-amber-800 text-sm"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                새로고침
+              </button>
+              {students.length > 0 && (
+              <button
+                type="button"
+                onClick={() => downloadStickerExcel(students, term.year, term.semester, allProgramData)}
                 className="clay-btn flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-br from-pastel-yellow-btn to-pastel-pink-btn font-title font-semibold text-amber-800"
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 스티커 현황 Excel 다운로드
               </button>
-            )}
+              )}
+            </div>
           </div>
+          {loading && <p className="text-sm text-slate-500 mb-2">데이터 불러오는 중...</p>}
           {students.length === 0 ? (
             <div className="rounded-3xl bg-white p-6 text-center text-slate-600 clay-card">
               아직 등록된 학생이 없어요. 학생이 로그인하면 목록에 나타납니다.
             </div>
           ) : (
             students.map((name) => (
-              <StudentRow key={name} name={name} year={term.year} semester={term.semester} />
+              <StudentRow
+                key={name}
+                name={name}
+                year={term.year}
+                semester={term.semester}
+                data={allProgramData[name]}
+              />
             ))
           )}
         </div>
